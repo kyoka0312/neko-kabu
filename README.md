@@ -15,6 +15,7 @@
 3. 左メニュー「SQL Editor」→「New query」を開き、`supabase/schema.sql` の中身を貼り付けて実行（テーブルが作成されます）
 4. 続けて `supabase/seed.sql` の中身も貼り付けて実行（カブトムシの実データ18匹分・体重記録107件が入ります）
 5. 左メニュー「Storage」→「New bucket」→ バケット名 `pet-photos` を作成し、「Public bucket」をONにする
+6. **写真アップロードの許可設定（重要）**: Public bucketは「読み取り」だけ公開で、書き込みには別途ポリシーが必要です。「Storage」→ 上部の「Policies」タブ →`pet-photos` の「New policy」→「For full customization」→ Policy name に `pet-photos all`、Allowed operation で **SELECT / INSERT / UPDATE / DELETE すべてにチェック** → Review → Save policy
 6. 左メニュー「Project Settings → API」を開き、`Project URL` と `anon public key` をメモしておく
 
 ## 2. 猫のプロフィールを実データに更新する

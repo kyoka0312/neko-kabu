@@ -27,7 +27,7 @@ insert into beetle_larvae (id, name, species, hatch_date, note, father_id, mothe
 (15, 'エミリア', 'エレファスゾウカブト', '2025-09-25', 'エレア_2', 7, 6),
 (16, 'エレナ', 'エレファスゾウカブト', '2025-09-26', 'エレア_3', 7, 6),
 (17, 'ノア', 'エレファスゾウカブト', '2025-10-08', 'エレア_4', 7, 6),
-(18, '天ぷら', '不明', '2025-09-30', '天ぷら', NULL, NULL);
+(18, '天ぷら', 'ヘラクレスオオカブト', '2025-09-30', '天ぷら', NULL, NULL);
 
 -- 体重記録データ
 insert into beetle_weights (larva_id, measured_date, weight_g) values
