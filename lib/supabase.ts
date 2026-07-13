@@ -1,7 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+// よくある設定ミスを自動補正する：
+// 末尾のスラッシュや「/rest/v1」はクライアントが自動で付けるため、
+// 環境変数に含まれているとパスが二重になりエラーになる。
+const url = rawUrl
+  ?.replace(/\/+$/, "")
+  .replace(/\/rest\/v1$/, "")
+  .replace(/\/+$/, "");
 
 // 環境変数が未設定・サンプル値のままの場合でもアプリ全体をクラッシュさせず、
 // 各ページでこのメッセージを表示できるようにする。
