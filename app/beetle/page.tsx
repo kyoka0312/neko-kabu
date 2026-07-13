@@ -1,3 +1,4 @@
+"use client";
 import { Scale, LineChart as LineChartIcon, Images } from "lucide-react";
 import { Card, TopBar, MenuRow } from "@/components/ui";
 

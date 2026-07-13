@@ -1,11 +1,19 @@
+"use client";
+import { useEffect, useState } from "react";
 import { Cat, Scale, User, LineChart as LineChartIcon, Images } from "lucide-react";
 import { Card, TopBar, MenuRow } from "@/components/ui";
 import { supabase } from "@/lib/supabase";
+import type { CatProfile } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
+export default function CatHome() {
+  const [profile, setProfile] = useState<CatProfile | null>(null);
 
-export default async function CatHome() {
-  const { data: profile } = await supabase.from("cat_profile").select("*").limit(1).maybeSingle();
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("cat_profile").select("*").limit(1).maybeSingle();
+      setProfile(data);
+    })();
+  }, []);
 
   return (
     <div className="max-w-md mx-auto pb-10">
@@ -22,7 +30,9 @@ export default async function CatHome() {
           </div>
           <div>
             <div className="font-serif text-lg font-bold">{profile?.name ?? "未登録"}</div>
-            <div className="text-[12px] opacity-60">{profile?.breed ?? ""} ・ {profile?.color ?? ""}</div>
+            <div className="text-[12px] opacity-60">
+              {profile?.breed ?? ""} ・ {profile?.color ?? ""}
+            </div>
           </div>
         </Card>
       </div>
