@@ -54,42 +54,47 @@ export function interpolateBenchmark(months: number): number {
   return t[t.length - 1][1];
 }
 
-// カブトムシ幼虫の成長コメント：
-// 対象個体の最新計測（孵化からD日目）について、同種のほかの幼虫の
-// 体重系列を各個体の孵化日基準で線形補間してD日目の推定体重を求め、
-// その平均と比較する。比較できる個体が2匹未満なら null。
-export function beetleGrowthComment(
-  targetDay: number,
-  targetWeightG: number,
-  peers: { days: number; weight_g: number }[][]
-): { avg: number; diffPct: number; verdict: string; count: number } | null {
-  const estimates: number[] = [];
-  for (const series of peers) {
-    const sorted = series.slice().sort((a, b) => a.days - b.days);
-    if (sorted.length === 0) continue;
-    if (targetDay < sorted[0].days || targetDay > sorted[sorted.length - 1].days) continue;
-    for (let i = 0; i < sorted.length; i++) {
-      if (sorted[i].days === targetDay) {
-        estimates.push(Number(sorted[i].weight_g));
-        break;
-      }
-      if (i < sorted.length - 1 && sorted[i].days < targetDay && targetDay < sorted[i + 1].days) {
-        const ratio = (targetDay - sorted[i].days) / (sorted[i + 1].days - sorted[i].days);
-        estimates.push(
-          Number(sorted[i].weight_g) + (Number(sorted[i + 1].weight_g) - Number(sorted[i].weight_g)) * ratio
-        );
-        break;
-      }
-    }
+// カブトムシ幼虫の孵化後日数別の平均体重の目安（一般的な飼育記録に基づく目安、g）。
+// 雌雄でかなり差があるため、オス・メス込みのざっくりした平均値。
+const BEETLE_BENCHMARKS: Record<string, [number, number][]> = {
+  ヘラクレスオオカブト: [
+    [0, 0.5], [30, 3], [60, 10], [90, 18], [120, 28], [180, 45],
+    [240, 60], [300, 72], [365, 82], [450, 92], [540, 97],
+  ],
+  エレファスゾウカブト: [
+    [0, 0.5], [30, 5], [60, 12], [90, 22], [120, 35], [180, 60],
+    [240, 85], [300, 105], [365, 120], [450, 135], [540, 145],
+  ],
+};
+
+function interpolateTable(table: [number, number][], x: number): number {
+  if (x <= table[0][0]) return table[0][1];
+  if (x >= table[table.length - 1][0]) return table[table.length - 1][1];
+  for (let i = 0; i < table.length - 1; i++) {
+    const [x0, y0] = table[i];
+    const [x1, y1] = table[i + 1];
+    if (x >= x0 && x <= x1) return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
   }
-  if (estimates.length < 2) return null;
-  const avg = estimates.reduce((s, v) => s + v, 0) / estimates.length;
-  const diffPct = ((targetWeightG - avg) / avg) * 100;
+  return table[table.length - 1][1];
+}
+
+// カブトムシ幼虫の成長コメント：
+// 孵化からD日目の体重を、その種の一般的な平均体重の目安と比較する。
+// 目安データが無い種は null。
+export function beetleGrowthComment(
+  species: string,
+  targetDay: number,
+  targetWeightG: number
+): { bench: number; diffPct: number; verdict: string } | null {
+  const table = BEETLE_BENCHMARKS[species];
+  if (!table) return null;
+  const bench = interpolateTable(table, targetDay);
+  const diffPct = ((targetWeightG - bench) / bench) * 100;
   let verdict: string;
-  if (diffPct > 15) verdict = "平均より大きめに育っています";
-  else if (diffPct < -15) verdict = "平均より小さめです";
+  if (diffPct > 20) verdict = "平均より大きめに育っています";
+  else if (diffPct < -20) verdict = "平均よりやや小さめです";
   else verdict = "順調に育っています（ほぼ平均的）";
-  return { avg, diffPct, verdict, count: estimates.length };
+  return { bench, diffPct, verdict };
 }
 
 export function weightComment(latestWeightKg: number, months: number) {

@@ -16,7 +16,6 @@ export default function BeetleDetailPage({ params }: { params: { id: string } })
   const [motherName, setMotherName] = useState("");
   const [records, setRecords] = useState<(BeetleWeight & { days: number })[]>([]);
   const [photos, setPhotos] = useState<BeetlePhoto[]>([]);
-  const [peerSeries, setPeerSeries] = useState<{ days: number; weight_g: number }[][]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
@@ -29,12 +28,11 @@ export default function BeetleDetailPage({ params }: { params: { id: string } })
       if (lErr) throw lErr;
       setLarva(l);
       if (!l) return;
-      const [{ data: father }, { data: mother }, { data: r }, { data: p }, { data: peers }] = await Promise.all([
+      const [{ data: father }, { data: mother }, { data: r }, { data: p }] = await Promise.all([
         l.father_id ? supabase.from("beetle_parents").select("name").eq("id", l.father_id).maybeSingle() : Promise.resolve({ data: null }),
         l.mother_id ? supabase.from("beetle_parents").select("name").eq("id", l.mother_id).maybeSingle() : Promise.resolve({ data: null }),
         supabase.from("beetle_weights").select("*").eq("larva_id", larvaId).order("measured_date"),
         supabase.from("beetle_photos").select("*").eq("larva_id", larvaId).order("created_at", { ascending: false }),
-        supabase.from("beetle_larvae").select("id,hatch_date").eq("species", l.species).neq("id", larvaId),
       ]);
       setFatherName(father?.name ?? "不明");
       setMotherName(mother?.name ?? "不明");
@@ -45,25 +43,6 @@ export default function BeetleDetailPage({ params }: { params: { id: string } })
         }))
       );
       setPhotos(p ?? []);
-
-      // 同じ種類のほかの幼虫の体重系列（各個体の孵化日基準の経過日数）を集める
-      const peerList = peers ?? [];
-      if (peerList.length > 0) {
-        const { data: pw } = await supabase
-          .from("beetle_weights")
-          .select("larva_id,measured_date,weight_g")
-          .in("larva_id", peerList.map((x) => x.id));
-        const hatchById = Object.fromEntries(peerList.map((x) => [x.id, x.hatch_date]));
-        const grouped: Record<number, { days: number; weight_g: number }[]> = {};
-        (pw ?? []).forEach((w) => {
-          const hatch = hatchById[w.larva_id];
-          if (!hatch) return;
-          (grouped[w.larva_id] ??= []).push({ days: daysBetween(hatch, w.measured_date), weight_g: Number(w.weight_g) });
-        });
-        setPeerSeries(Object.values(grouped));
-      } else {
-        setPeerSeries([]);
-      }
     } catch (e: any) {
       setError(`データの取得に失敗しました：${e?.message ?? String(e)}`);
     }
@@ -91,7 +70,7 @@ export default function BeetleDetailPage({ params }: { params: { id: string } })
   };
 
   const latest = records[records.length - 1];
-  const comment = latest ? beetleGrowthComment(latest.days, Number(latest.weight_g), peerSeries) : null;
+  const comment = latest && larva ? beetleGrowthComment(larva.species, latest.days, Number(latest.weight_g)) : null;
 
   if (!larva) {
     return (
@@ -152,18 +131,18 @@ export default function BeetleDetailPage({ params }: { params: { id: string } })
               <>
                 <div className="font-serif text-lg mb-1 font-bold text-beetleAccent">{comment.verdict}</div>
                 <p className="text-[13px] leading-relaxed opacity-80">
-                  孵化から{latest.days}日目・体重{Number(latest.weight_g).toFixed(1)}g。同じ{larva.species}
-                  のほかの子たち（{comment.count}匹）の{latest.days}日目時点の平均はおよそ
-                  {comment.avg.toFixed(1)}gのため、平均との差は{comment.diffPct > 0 ? "+" : ""}
+                  孵化から{latest.days}日目・体重{Number(latest.weight_g).toFixed(1)}g。{larva.species}
+                  の幼虫の同時期の一般的な平均体重の目安はおよそ{comment.bench.toFixed(0)}gのため、
+                  平均との差は{comment.diffPct > 0 ? "+" : ""}
                   {comment.diffPct.toFixed(0)}%です。
                 </p>
                 <p className="text-[11px] opacity-50 mt-2">
-                  ※ この家の同じ種類の幼虫の記録をもとにした比較です。個体差・雌雄差があります。
+                  ※ 一般的な飼育記録をもとにした目安との比較です。雌雄差・飼育環境による個体差が大きい点にご注意ください。
                 </p>
               </>
             ) : (
               <p className="text-[13px] leading-relaxed opacity-60">
-                同じ時期に比較できる同種の記録がまだ足りないため、平均との比較コメントは表示できません。
+                {larva.species}の平均体重の目安データがないため、比較コメントは表示できません。
               </p>
             )}
           </Card>
