@@ -9,22 +9,33 @@ export default function BeetleAlbumPage() {
   const [larvae, setLarvae] = useState<BeetleLarva[]>([]);
   const [larvaId, setLarvaId] = useState<number | null>(null);
   const [photos, setPhotos] = useState<BeetlePhoto[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("beetle_larvae").select("*").order("id");
-      setLarvae(data ?? []);
-      if (data && data.length > 0) setLarvaId(data[0].id);
+      try {
+        const { data, error } = await supabase.from("beetle_larvae").select("*").order("id");
+        if (error) throw error;
+        setLarvae(data ?? []);
+        if (data && data.length > 0) setLarvaId(data[0].id);
+      } catch (e: any) {
+        setError(`データの取得に失敗しました：${e?.message ?? String(e)}`);
+      }
     })();
   }, []);
 
   const load = async (id: number) => {
-    const { data } = await supabase
-      .from("beetle_photos")
-      .select("*")
-      .eq("larva_id", id)
-      .order("created_at", { ascending: false });
-    setPhotos(data ?? []);
+    try {
+      const { data, error } = await supabase
+        .from("beetle_photos")
+        .select("*")
+        .eq("larva_id", id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setPhotos(data ?? []);
+    } catch (e: any) {
+      setError(`データの取得に失敗しました：${e?.message ?? String(e)}`);
+    }
   };
 
   useEffect(() => {
@@ -33,16 +44,30 @@ export default function BeetleAlbumPage() {
 
   const addPhoto = async (blob: Blob) => {
     if (!larvaId) return;
-    const path = `beetle/${larvaId}-${Date.now()}.jpg`;
-    const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, blob, { contentType: "image/jpeg" });
-    if (error) return;
-    const { data: pub } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
-    await supabase.from("beetle_photos").insert({ larva_id: larvaId, photo_url: pub.publicUrl });
+    setError(null);
+    try {
+      const path = `beetle/${larvaId}-${Date.now()}.jpg`;
+      const { error: upErr } = await supabase.storage.from(PHOTO_BUCKET).upload(path, blob, { contentType: "image/jpeg" });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+      const { error: dbErr } = await supabase.from("beetle_photos").insert({ larva_id: larvaId, photo_url: pub.publicUrl });
+      if (dbErr) throw dbErr;
+    } catch (e: any) {
+      setError(`写真のアップロードに失敗しました：${e?.message ?? String(e)}`);
+      return;
+    }
     load(larvaId);
   };
 
   const removePhoto = async (id: string) => {
-    await supabase.from("beetle_photos").delete().eq("id", id);
+    setError(null);
+    try {
+      const { error } = await supabase.from("beetle_photos").delete().eq("id", id);
+      if (error) throw error;
+    } catch (e: any) {
+      setError(`削除に失敗しました：${e?.message ?? String(e)}`);
+      return;
+    }
     if (larvaId) load(larvaId);
   };
 
@@ -50,6 +75,11 @@ export default function BeetleAlbumPage() {
     <div className="max-w-md mx-auto pb-10">
       <TopBar title="フォトギャラリー" subtitle="Beetle / Photos" backHref="/beetle" accent="#3F5D3A" />
       <div className="px-5 pt-5">
+        {error && (
+          <Card className="p-4 mb-4 border-red-300">
+            <div className="text-[13px] text-red-600">{error}</div>
+          </Card>
+        )}
         <Field label="幼虫を選ぶ">
           <select className={inputClass} value={larvaId ?? ""} onChange={(e) => setLarvaId(Number(e.target.value))}>
             {larvae.map((l) => (

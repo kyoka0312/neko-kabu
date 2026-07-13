@@ -18,6 +18,7 @@ const config: Config = {
       fontFamily: {
         serif: ["'Shippori Mincho'", "serif"],
         mono: ["'JetBrains Mono'", "monospace"],
+        hand: ["'Klee One'", "cursive"],
       },
     },
   },

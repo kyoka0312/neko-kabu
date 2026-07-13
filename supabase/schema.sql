@@ -85,6 +85,12 @@ create table beetle_photos (
   created_at timestamptz default now()
 );
 
+-- アプリ設定（ホーム画面のカブトムシ表紙写真などを保存）
+create table app_settings (
+  key text primary key,
+  value text
+);
+
 -- 猫プロフィールの初期1行（あとでTable Editorから実データに書き換えてください）
 insert into cat_profile (name, sex, breed, color, birthday, arrival_date, father_info, mother_info, last_vaccine_date)
 values ('（未登録）', null, null, null, null, null, null, null, null);

@@ -8,26 +8,46 @@ import type { CatPhoto } from "@/lib/types";
 
 export default function CatAlbumPage() {
   const [photos, setPhotos] = useState<CatPhoto[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
-    const { data } = await supabase.from("cat_photos").select("*").order("created_at", { ascending: false });
-    setPhotos(data ?? []);
+    try {
+      const { data, error } = await supabase.from("cat_photos").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      setPhotos(data ?? []);
+    } catch (e: any) {
+      setError(`データの取得に失敗しました：${e?.message ?? String(e)}`);
+    }
   };
   useEffect(() => {
     load();
   }, []);
 
   const addPhoto = async (blob: Blob) => {
-    const path = `cat/album-${Date.now()}.jpg`;
-    const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, blob, { contentType: "image/jpeg" });
-    if (error) return;
-    const { data: pub } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
-    await supabase.from("cat_photos").insert({ photo_url: pub.publicUrl, taken_date: todayStr() });
+    setError(null);
+    try {
+      const path = `cat/album-${Date.now()}.jpg`;
+      const { error: upErr } = await supabase.storage.from(PHOTO_BUCKET).upload(path, blob, { contentType: "image/jpeg" });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+      const { error: dbErr } = await supabase.from("cat_photos").insert({ photo_url: pub.publicUrl, taken_date: todayStr() });
+      if (dbErr) throw dbErr;
+    } catch (e: any) {
+      setError(`写真のアップロードに失敗しました：${e?.message ?? String(e)}`);
+      return;
+    }
     load();
   };
 
   const removePhoto = async (id: string) => {
-    await supabase.from("cat_photos").delete().eq("id", id);
+    setError(null);
+    try {
+      const { error } = await supabase.from("cat_photos").delete().eq("id", id);
+      if (error) throw error;
+    } catch (e: any) {
+      setError(`削除に失敗しました：${e?.message ?? String(e)}`);
+      return;
+    }
     load();
   };
 
@@ -35,6 +55,11 @@ export default function CatAlbumPage() {
     <div className="max-w-md mx-auto pb-10">
       <TopBar title="フォトアルバム" subtitle="Cat / Photos" backHref="/cat" accent="#C1694F" />
       <div className="px-5 pt-5">
+        {error && (
+          <Card className="p-4 mb-4 border-red-300">
+            <div className="text-[13px] text-red-600">{error}</div>
+          </Card>
+        )}
         <PhotoPicker onPick={addPhoto} />
         <div className="grid grid-cols-3 gap-2 mt-5">
           {photos.map((p) => (
