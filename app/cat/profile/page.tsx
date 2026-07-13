@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Cat, Pencil } from "lucide-react";
+import { Cat, Pencil, Camera } from "lucide-react";
 import { Card, TopBar, Field, inputClass, PhotoPicker } from "@/components/ui";
 import { supabase, supabaseConfigError, PHOTO_BUCKET } from "@/lib/supabase";
 import { fmtDate, ageMonthsDays } from "@/lib/utils";
@@ -274,6 +274,12 @@ export default function CatProfilePage() {
                   <Cat size={40} color="#C1694F" />
                 )}
               </div>
+              <button
+                onClick={() => setEditPhoto((v) => !v)}
+                className="mb-3 px-3 py-1.5 rounded-full text-[12px] flex items-center gap-1 border border-line opacity-70"
+              >
+                <Camera size={12} /> 写真を変更
+              </button>
               {editPhoto && (
                 <div className="mb-3">
                   <PhotoPicker onPick={uploadPhoto} />
