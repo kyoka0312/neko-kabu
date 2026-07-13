@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Card, TopBar, Field, inputClass } from "@/components/ui";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseConfigError } from "@/lib/supabase";
 import { todayStr, fmtDate } from "@/lib/utils";
 import type { CatWeight } from "@/lib/types";
 
@@ -11,17 +11,29 @@ export default function CatWeightPage() {
   const [weight, setWeight] = useState("");
   const [memo, setMemo] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [recent, setRecent] = useState<CatWeight[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const { data } = await supabase
-      .from("cat_weights")
-      .select("*")
-      .order("measured_date", { ascending: false })
-      .limit(6);
-    setRecent(data ?? []);
-    setLoading(false);
+    if (supabaseConfigError) {
+      setSaveError(supabaseConfigError);
+      setLoading(false);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from("cat_weights")
+        .select("*")
+        .order("measured_date", { ascending: false })
+        .limit(6);
+      if (error) throw error;
+      setRecent(data ?? []);
+    } catch (e: any) {
+      setSaveError(`データの取得に失敗しました：${e?.message ?? String(e)}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -30,10 +42,21 @@ export default function CatWeightPage() {
 
   const submit = async () => {
     if (!date || !weight) return;
-    await supabase.from("cat_weights").upsert(
-      { measured_date: date, weight_kg: Math.round(parseFloat(weight) * 100) / 100, memo: memo || null },
-      { onConflict: "measured_date" }
-    );
+    if (supabaseConfigError) {
+      setSaveError(supabaseConfigError);
+      return;
+    }
+    setSaveError(null);
+    try {
+      const { error } = await supabase.from("cat_weights").upsert(
+        { measured_date: date, weight_kg: Math.round(parseFloat(weight) * 100) / 100, memo: memo || null },
+        { onConflict: "measured_date" }
+      );
+      if (error) throw error;
+    } catch (e: any) {
+      setSaveError(`保存に失敗しました：${e?.message ?? String(e)}`);
+      return;
+    }
     setWeight("");
     setMemo("");
     setSaved(true);
@@ -75,6 +98,7 @@ export default function CatWeightPage() {
             <Plus size={16} /> 記録する
           </button>
           {saved && <div className="text-center text-[13px] mt-3 text-catAccent">保存しました</div>}
+          {saveError && <div className="text-center text-[13px] mt-3 text-red-600">{saveError}</div>}
         </Card>
 
         <div className="mt-6">
@@ -87,7 +111,7 @@ export default function CatWeightPage() {
                   <div className="text-[13px] opacity-60">{fmtDate(w.measured_date)}</div>
                   {w.memo && <div className="text-[12px] opacity-50">{w.memo}</div>}
                 </div>
-                <div className="font-mono font-medium">{w.weight_kg.toFixed(2)} kg</div>
+                <div className="font-mono font-medium">{Number(w.weight_kg).toFixed(2)} kg</div>
               </div>
             ))}
           </Card>
