@@ -5,7 +5,7 @@ import {
 } from "recharts";
 import { Sparkles } from "lucide-react";
 import { Card, TopBar } from "@/components/ui";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseConfigError } from "@/lib/supabase";
 import { fmtDate, fmtDateShort, ageMonthsDays, weightComment } from "@/lib/utils";
 import type { CatWeight, CatProfile } from "@/lib/types";
 
@@ -16,6 +16,11 @@ export default function CatGraphPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (supabaseConfigError) {
+      setError(supabaseConfigError);
+      setLoading(false);
+      return;
+    }
     (async () => {
       try {
         const [wRes, pRes] = await Promise.all([

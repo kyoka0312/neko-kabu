@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Card, TopBar, Field, inputClass } from "@/components/ui";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseConfigError } from "@/lib/supabase";
 import { todayStr, fmtDate } from "@/lib/utils";
 import type { CatWeight } from "@/lib/types";
 
@@ -16,6 +16,11 @@ export default function CatWeightPage() {
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
+    if (supabaseConfigError) {
+      setSaveError(supabaseConfigError);
+      setLoading(false);
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from("cat_weights")
@@ -37,6 +42,10 @@ export default function CatWeightPage() {
 
   const submit = async () => {
     if (!date || !weight) return;
+    if (supabaseConfigError) {
+      setSaveError(supabaseConfigError);
+      return;
+    }
     setSaveError(null);
     try {
       const { error } = await supabase.from("cat_weights").upsert(
